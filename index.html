@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bangla Spin Wheel - ভাগ্য পরীক্ষা</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff007a;
+            --secondary: #00d4ff;
+            --accent: #39ff14;
+            --bg-dark: #0a0a12;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Poppins', 'Hind Siliguri', sans-serif;
+            background: var(--bg-dark);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a12 100%);
+        }
+
+        /* Background Particles Effect */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+
+        /* Main Container */
+        .container {
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            padding: 2rem;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            text-shadow: 0 10px 20px rgba(255, 0, 122, 0.2);
+        }
+
+        /* Wheel Wrapper */
+        .wheel-wrapper {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 0 auto 2.5rem;
+            filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3));
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid #1e1e2f;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 30px rgba(0, 212, 255, 0.2);
+        }
+
+        /* Pointer */
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 50px;
+            z-index: 10;
+            filter: drop-shadow(0 5px 10px rgba(255, 0, 122, 0.5));
+        }
+
+        .pointer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid var(--primary);
+        }
+
+        /* Spin Button */
+        .spin-btn {
+            background: linear-gradient(45deg, var(--primary), #ff4d94);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 25px rgba(255, 0, 122, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+        }
+
+        .spin-btn:hover {
+            transform: scale(1.05) translateY(-3px);
+            box-shadow: 0 15px 35px rgba(255, 0, 122, 0.6);
+        }
+
+        .spin-btn:active {
+            transform: scale(0.95);
+        }
+
+        .spin-btn:disabled {
+            background: #444;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2.5rem;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            transform: scale(0.7);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+            color: #fff;
+        }
+
+        .modal-btn {
+            background: var(--secondary);
+            color: #000;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .modal-btn:hover {
+            background: #fff;
+            transform: translateY(-2px);
+        }
+
+        .share-btn {
+            background: transparent;
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+            margin-top: 0.8rem;
+        }
+
+        .share-btn:hover {
+            background: var(--secondary);
+            color: #000;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
+            color: #000;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            z-index: 200;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toast.active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Screen Shake */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @media (max-width: 400px) {
+            .wheel-wrapper {
+                width: 280px;
+                height: 280px;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 1px;
+            pointer-events: none;
+            z-index: 50;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="watermark">Made by Sabbir Ahammad Limon</div>
+
+    <div class="container" id="mainContainer">
+        <h1>ভাগ্য পরীক্ষা 🔥</h1>
+        
+        <div class="wheel-wrapper">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <button class="spin-btn" id="spinBtn">Spin কর 🔥</button>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2 id="resultText"></h2>
+            <button class="modal-btn" id="claimBtn">নেও 😆</button>
+            <button class="modal-btn share-btn" id="shareBtn">Share Result 🚀</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">কপি হয়েছে! বন্ধুদের পাঠাও 😎</div>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const resultText = document.getElementById('resultText');
+        const claimBtn = document.getElementById('claimBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const toast = document.getElementById('toast');
+        const mainContainer = document.getElementById('mainContainer');
+
+        const segments = [
+            { label: '.200 টাকা', color: '#ff007a' },
+            { label: '0.001 টাকা', color: '#00d4ff' },
+            { label: '1.00 টাকা', color: '#39ff14' },
+            { label: 'দোয়া 🤲', color: '#ffea00' },
+            { label: 'ভালোবাসা ❤️', color: '#9d00ff' },
+            { label: '.200 টাকা', color: '#ff007a' },
+            { label: '0.001 টাকা', color: '#00d4ff' },
+            { label: '1.00 টাকা', color: '#39ff14' },
+            { label: 'দোয়া 🤲', color: '#ffea00' },
+            { label: 'ভালোবাসা ❤️', color: '#9d00ff' }
+        ];
+
+        const numSegments = segments.length;
+        const arc = (2 * Math.PI) / numSegments;
+        let startAngle = 0;
+        let spinTimeout = null;
+        let spinAngleStart = 0;
+        let spinTime = 0;
+        let spinTimeTotal = 0;
+
+        // Create background particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 5 + 2;
+                p.style.width = `${size}px`;
+                p.style.height = `${size}px`;
+                p.style.left = `${Math.random() * 100}%`;
+                p.style.top = `${Math.random() * 100}%`;
+                p.style.animationDelay = `${Math.random() * 20}s`;
+                p.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                container.appendChild(p);
+            }
+        }
+        createParticles();
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10;
+
+            for (let i = 0; i < numSegments; i++) {
+                const angle = startAngle + i * arc;
+                
+                // Draw segment
+                ctx.beginPath();
+                ctx.fillStyle = segments[i].color;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + arc, false);
+                ctx.lineTo(centerX, centerY);
+                ctx.fill();
+                
+                // Add segment border
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw text
+                ctx.save();
+                ctx.fillStyle = i === 3 || i === 8 ? '#000' : '#fff'; // Yellow segments get black text
+                ctx.translate(centerX + Math.cos(angle + arc / 2) * radius * 0.7, centerY + Math.sin(angle + arc / 2) * radius * 0.7);
+                ctx.rotate(angle + arc / 2 + Math.PI / 2);
+                ctx.font = 'bold 28px "Hind Siliguri", sans-serif';
+                ctx.textAlign = 'center';
+                const label = segments[i].label;
+                ctx.fillText(label, 0, 0);
+                ctx.restore();
+            }
+
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 40, 0, 2 * Math.PI);
+            ctx.fillStyle = '#1e1e2f';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Inner glow
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 40);
+            gradient.addColorStop(0, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        function rotateWheel() {
+            spinTime += 30;
+            if (spinTime >= spinTimeTotal) {
+                stopRotateWheel();
+                return;
+            }
+            const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+            startAngle += (spinAngle * Math.PI) / 180;
+            drawWheel();
+            spinTimeout = setTimeout(rotateWheel, 30);
+        }
+
+        function stopRotateWheel() {
+            clearTimeout(spinTimeout);
+            const degrees = (startAngle * 180) / Math.PI + 90;
+            const arcd = (arc * 180) / Math.PI;
+            const index = Math.floor((360 - (degrees % 360)) / arcd);
+            const result = segments[index];
+            
+            showResult(result.label);
+            spinBtn.disabled = false;
+        }
+
+        function easeOut(t, b, c, d) {
+            const ts = (t /= d) * t;
+            const tc = ts * t;
+            return b + c * (tc + -3 * ts + 3 * t);
+        }
+
+        function showResult(label) {
+            // Screen shake
+            mainContainer.classList.add('shake');
+            setTimeout(() => mainContainer.classList.remove('shake'), 500);
+
+            // Confetti
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#ff007a', '#00d4ff', '#39ff14', '#ffea00']
+            });
+
+            let text = "";
+            let btnText = "নেও 😆";
+
+            if (label === 'দোয়া 🤲') {
+                text = "তোমার জন্য দোয়া রইলো, যেন তাড়াতাড়ি বিয়ে টা হয় 🤲";
+                btnText = "দোয়া গ্রহণ কর";
+            } else if (label === 'ভালোবাসা ❤️') {
+                text = "তোমার জন্য বুক ভরা ভালোবাসা ❤️";
+                btnText = "ভালোবাসা গ্রহণ কর";
+            } else {
+                text = `তুমি পেয়েছো ${label} টাকা 💸`;
+                btnText = "নেও 😆";
+            }
+
+            resultText.innerText = text;
+            claimBtn.innerText = btnText;
+            modalOverlay.classList.add('active');
+        }
+
+        spinBtn.addEventListener('click', () => {
+            spinBtn.disabled = true;
+            spinAngleStart = Math.random() * 10 + 10;
+            spinTime = 0;
+            spinTimeTotal = Math.random() * 3 + 4 * 1000;
+            rotateWheel();
+        });
+
+        claimBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+        });
+
+        shareBtn.addEventListener('click', () => {
+            const text = resultText.innerText + " - আমার ভাগ্য পরীক্ষা করলাম! তুমিও করো 🔥";
+            navigator.clipboard.writeText(text).then(() => {
+                toast.classList.add('active');
+                setTimeout(() => toast.classList.remove('active'), 2500);
+            });
+        });
+
+        drawWheel();
+    </script>
+</body>
+</html>
